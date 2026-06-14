@@ -1,4 +1,5 @@
 # MailFlow Studio
+<a href="https://www.producthunt.com/products/mailflow-studio?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-mailflow-studio" target="_blank" rel="noopener noreferrer"><img alt="MailFlow Studio - Self-hosted email operations platform on Cloudflare | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1171508&amp;theme=light&amp;t=1781440472568"></a>
 
 MailFlow Studio is a Cloudflare-native Email Operations Platform. It sits between incoming business email and the final destination, then stores, routes, classifies, automates, and logs every message.
 
