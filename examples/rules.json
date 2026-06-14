@@ -1,0 +1,60 @@
+[
+  {
+    "name": "Support invoices to Telegram and webhook",
+    "active": true,
+    "priority": 10,
+    "matchMode": "all",
+    "conditions": {
+      "recipient_contains": "support@",
+      "subject_contains": "invoice",
+      "keywords": ["urgent", "quote", "proposal"]
+    },
+    "actions": [
+      {
+        "type": "telegram",
+        "template": "New support email from {{from}}: {{subject}}"
+      },
+      {
+        "type": "webhook",
+        "url": "https://example.com/api/inbound-email",
+        "method": "POST"
+      },
+      {
+        "type": "save"
+      }
+    ]
+  },
+  {
+    "name": "Ignore obvious spam",
+    "active": true,
+    "priority": 20,
+    "matchMode": "any",
+    "conditions": {
+      "sender_contains": "promo@",
+      "subject_contains": "winner"
+    },
+    "actions": [
+      {
+        "type": "ignore"
+      }
+    ]
+  },
+  {
+    "name": "Forward attachments",
+    "active": true,
+    "priority": 30,
+    "matchMode": "all",
+    "conditions": {
+      "has_attachment": true
+    },
+    "actions": [
+      {
+        "type": "forward",
+        "to": "me@example.com"
+      },
+      {
+        "type": "save"
+      }
+    ]
+  }
+]

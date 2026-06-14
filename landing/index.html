@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailFlow Studio — Cloudflare-native Email Operations Platform</title>
+  <meta name="description" content="An open-source email operations platform that runs entirely on Cloudflare Workers. Receive, thread, route, automate, and reply to every business email — on your own infrastructure." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="MailFlow Studio — Email, as an operations platform" />
+  <meta property="og:description" content="Self-hosted email operations on Cloudflare Workers. Thread replies onto tickets, answer from the dashboard, search everything. MIT licensed." />
+  <meta property="og:image" content="./assets/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MailFlow Studio — Email, as an operations platform" />
+  <meta name="twitter:description" content="Self-hosted email operations on Cloudflare Workers. MIT licensed, runs on the free tier." />
+  <meta name="twitter:image" content="./assets/og-image.png" />
+  <link rel="preload" href="./assets/fonts/Zad-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="./assets/fonts/Zad-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="./assets/fonts/zad.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0a0a0f', panel: '#12121c', edge: '#1f1f2e',
+            brand: '#f6821f', brand2: '#fbad41', sky: '#38bdf8'
+          },
+          fontFamily: {
+            sans: ['Zad', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0a0a0f; font-feature-settings: "ss01", "cv01", "tnum"; }
+    .grid-bg {
+      background-image:
+        radial-gradient(60% 50% at 50% 0%, rgba(246,130,31,0.16), transparent 70%),
+        linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 100% 100%, 44px 44px, 44px 44px;
+    }
+    .glow { box-shadow: 0 0 0 1px rgba(246,130,31,0.18), 0 24px 60px -20px rgba(246,130,31,0.30); }
+    .card-edge { border: 1px solid rgba(255,255,255,0.07); transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease, background .3s ease; }
+    .card-edge:hover { border-color: rgba(246,130,31,0.4); transform: translateY(-2px); box-shadow: 0 14px 40px -20px rgba(246,130,31,0.25); }
+    .fade-line { background: linear-gradient(90deg, transparent, rgba(246,130,31,0.5), transparent); }
+    .tag { background: rgba(246,130,31,0.10); border: 1px solid rgba(246,130,31,0.25); }
+    .window-glow { box-shadow: 0 40px 100px -30px rgba(246,130,31,0.45), 0 0 0 1px rgba(255,255,255,0.08); }
+    .keep-ltr { direction: ltr; unicode-bidi: isolate; }
+
+    /* Scroll progress (top sliver) */
+    #scrollbar { position: fixed; top: 0; left: 0; height: 2px; width: 0%; background: linear-gradient(90deg,#f6821f,#fbad41); z-index: 60; transition: width .08s linear; box-shadow: 0 0 12px rgba(246,130,31,0.5); }
+
+    /* Active nav state */
+    .nav-link.is-active { color: #fff; }
+    .nav-link.is-active::after { content: ""; display: block; height: 2px; margin-top: 4px; background: linear-gradient(90deg,#f6821f,#fbad41); border-radius: 2px; }
+
+    /* Browser chrome (used by demo + screen cards + start) */
+    .browser-chrome { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #15151f; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .browser-chrome .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .browser-chrome .dot.r { background: #ff5f56 } .browser-chrome .dot.y { background: #ffbd2e } .browser-chrome .dot.g { background: #27c93f }
+    .browser-chrome .url { flex: 1; text-align: center; font: 11px/1.4 ui-monospace, Menlo, monospace; color: #6c6e7c; background: #0c0c14; border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 3px 10px; max-width: 280px; margin: 0 auto; direction: ltr; }
+
+    /* Icon tiles */
+    .icon-tile { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(180deg, rgba(246,130,31,0.16), rgba(246,130,31,0.04)); border: 1px solid rgba(246,130,31,0.18); color: #fbad41; transition: transform .3s ease, box-shadow .3s ease; }
+    .card-edge:hover .icon-tile { box-shadow: 0 8px 24px -10px rgba(246,130,31,0.4); transform: scale(1.04); }
+    .icon-tile svg { width: 22px; height: 22px; }
+
+    /* Reveal on scroll */
+    .reveal { opacity: 0; transform: translateY(14px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.is-in { opacity: 1; transform: none; }
+
+    /* Stat cards (hero) */
+    .stat-card { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 18px 16px; text-align: left; }
+    .stat-card .n { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .stat-card .l { font-size: 12px; color: #8b8e9c; margin-top: 4px; }
+
+    /* Hero badge live dot */
+    .live-dot { position: relative; }
+    .live-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: rgba(251,173,65,0.45); animation: pulse 1.8s ease-out infinite; }
+    @keyframes pulse { 0% { transform: scale(.6); opacity: .9 } 100% { transform: scale(2.4); opacity: 0 } }
+
+    /* Arabic mode tweaks */
+    html[dir="rtl"] body { font-family: "Zad", "Segoe UI", Tahoma, system-ui, sans-serif; line-height: 1.65; }
+    html[dir="rtl"] .stat-card { text-align: right; }
+    html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] h3 { line-height: 1.35; }
+
+    /* Print-clean */
+    @media print { #scrollbar, header, footer, .grid-bg { background: white; } body { color: #111; } }
+  </style>
+</head>
+<body class="text-slate-300 font-sans antialiased">
+
+  <div id="scrollbar"></div>
+
+  <!-- NAV -->
+  <header class="sticky top-0 z-50 backdrop-blur bg-ink/70 border-b border-white/5">
+    <nav class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+      <a href="#top" class="flex items-center gap-2.5 font-semibold text-white keep-ltr">
+        <span class="grid place-items-center w-8 h-8 rounded-lg bg-gradient-to-br from-brand to-brand2 text-ink font-bold">M</span>
+        MailFlow <span class="text-slate-500 font-normal">Studio</span>
+      </a>
+      <div class="hidden md:flex items-center gap-7 text-sm">
+        <a href="#demo" class="nav-link hover:text-white transition" data-i18n="nav.demo">Demo</a>
+        <a href="#screens" class="nav-link hover:text-white transition" data-i18n="nav.screens">Screens</a>
+        <a href="#problem" class="nav-link hover:text-white transition" data-i18n="nav.problem">The Problem</a>
+        <a href="#how" class="nav-link hover:text-white transition" data-i18n="nav.how">How it works</a>
+        <a href="#gap" class="nav-link hover:text-white transition" data-i18n="nav.gap">Closing the gap</a>
+        <a href="#deepdive" class="nav-link hover:text-white transition" data-i18n="nav.deepdive">Under the hood</a>
+        <a href="#features" class="nav-link hover:text-white transition" data-i18n="nav.features">Features</a>
+        <a href="#start" class="nav-link hover:text-white transition" data-i18n="nav.start">Quick start</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="langToggle" onclick="toggleLang()" class="text-sm font-medium bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 transition text-white">العربية</button>
+        <a href="https://github.com/ahmedvnabil/mailflow" class="flex items-center gap-2 text-sm font-medium bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3.5 py-2 transition text-white">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span data-i18n="nav.github">GitHub</span>
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section id="top" class="grid-bg">
+    <div class="max-w-6xl mx-auto px-5 pt-20 pb-16 text-center">
+      <span class="tag inline-flex items-center gap-2 text-xs font-medium text-brand2 rounded-full px-3 py-1">
+        <span class="live-dot w-1.5 h-1.5 rounded-full bg-brand2"></span> <span data-i18n="hero.badge">Open source · MIT · Runs on Cloudflare's free tier</span>
+      </span>
+      <h1 class="mt-6 text-4xl sm:text-6xl font-bold text-white tracking-tight leading-[1.05]">
+        <span data-i18n="hero.title1">Your business email,</span><br/>
+        <span class="bg-gradient-to-r from-brand to-brand2 bg-clip-text text-transparent" data-i18n="hero.title2">as an operations platform.</span>
+      </h1>
+      <p class="mt-6 max-w-2xl mx-auto text-lg text-slate-400" data-i18n="hero.sub">
+        MailFlow Studio sits between your incoming email and its destination — then stores, threads, routes,
+        automates, and logs every single message. Entirely on Cloudflare Workers. On your own infrastructure.
+      </p>
+      <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+        <a href="https://github.com/ahmedvnabil/mailflow" class="glow bg-gradient-to-br from-brand to-brand2 text-ink font-semibold rounded-xl px-6 py-3 hover:brightness-110 transition" data-i18n="hero.star">
+          ★ Star on GitHub
+        </a>
+        <a href="#demo" class="border border-white/15 hover:border-white/30 text-white font-medium rounded-xl px-6 py-3 transition" data-i18n="hero.watch">
+          Watch the demo →
+        </a>
+      </div>
+      <div class="mt-14 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto">
+        <div class="stat-card"><div class="n">58</div><div class="l" data-i18n="stats.tests">tests passing</div></div>
+        <div class="stat-card"><div class="n">~4,800</div><div class="l" data-i18n="stats.loc">lines of TypeScript</div></div>
+        <div class="stat-card"><div class="n">0</div><div class="l" data-i18n="stats.servers">runtime servers to manage</div></div>
+        <div class="stat-card"><div class="n keep-ltr">No React</div><div class="l" data-i18n="stats.noreact">No React · No Vue</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section id="demo" class="max-w-5xl mx-auto px-5 pb-24 -mt-2">
+    <div class="text-center max-w-2xl mx-auto mb-8">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="demo.eyebrow">See it in action</p>
+      <h2 class="mt-3 text-2xl sm:text-3xl font-bold text-white" data-i18n="demo.title">Thread · reply · search — in one place.</h2>
+    </div>
+    <div class="window-glow rounded-2xl overflow-hidden bg-panel reveal">
+      <div class="browser-chrome">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="url">mailflow.studio · live walkthrough</span>
+      </div>
+      <img src="./assets/demo-real.gif" alt="MailFlow Studio demo: a customer reply threading onto a ticket, an agent reply, and unified search."
+           class="w-full block" width="1000" height="562" loading="lazy" />
+    </div>
+    <p class="mt-4 text-center text-sm text-slate-500" data-i18n="demo.caption">A looping walk-through of the three workflows that matter most. No audio, no fluff.</p>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- SCREENS -->
+  <section id="screens" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="text-center max-w-2xl mx-auto mb-10">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="screens.eyebrow">Real screenshots</p>
+      <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="screens.title">The actual app, not a mockup.</h2>
+      <p class="mt-4 text-slate-400" data-i18n="screens.sub">Captured straight from the local app with real seeded data — same Worker, same UI, same bilingual toggle.</p>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-5">
+      <figure class="rounded-xl overflow-hidden bg-panel card-edge reveal">
+        <div class="browser-chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">mailflow.studio/</span></div>
+        <img src="./assets/screenshots/en/dashboard.png" alt="MailFlow Studio dashboard" loading="lazy" class="w-full block" />
+        <figcaption class="px-4 py-3 text-sm text-slate-400 border-t border-white/5" data-i18n="screens.cap.dashboard">Dashboard — readiness, ticket counts, live activity.</figcaption>
+      </figure>
+      <figure class="rounded-xl overflow-hidden bg-panel card-edge reveal">
+        <div class="browser-chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">mailflow.studio/emails</span></div>
+        <img src="./assets/screenshots/en/emails.png" alt="Inbound emails list" loading="lazy" class="w-full block" />
+        <figcaption class="px-4 py-3 text-sm text-slate-400 border-t border-white/5" data-i18n="screens.cap.emails">Emails — every inbound message in one operational view.</figcaption>
+      </figure>
+      <figure class="rounded-xl overflow-hidden bg-panel card-edge reveal">
+        <div class="browser-chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">mailflow.studio/search?q=invoice</span></div>
+        <img src="./assets/screenshots/en/search.png" alt="Unified search results" loading="lazy" class="w-full block" />
+        <figcaption class="px-4 py-3 text-sm text-slate-400 border-t border-white/5" data-i18n="screens.cap.search">Search — emails, tickets, and contacts in one query.</figcaption>
+      </figure>
+      <figure class="rounded-xl overflow-hidden bg-panel card-edge reveal">
+        <div class="browser-chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">mailflow.studio/tickets/1</span></div>
+        <img src="./assets/screenshots/en/ticket.png" alt="Ticket detail with reply composer" loading="lazy" class="w-full block" />
+        <figcaption class="px-4 py-3 text-sm text-slate-400 border-t border-white/5" data-i18n="screens.cap.ticket">Ticket — reply composer, timeline, internal notes.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- PROBLEM -->
+  <section id="problem" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="text-center max-w-2xl mx-auto">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="problem.eyebrow">The gap</p>
+      <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="problem.title">Business email is where structure goes to die.</h2>
+      <p class="mt-4 text-slate-400" data-i18n-html="problem.sub">
+        Addresses like <span class="font-mono text-slate-300">support@</span>, <span class="font-mono text-slate-300">sales@</span>,
+        <span class="font-mono text-slate-300">billing@</span>, and <span class="font-mono text-slate-300">jobs@</span> land in a shared
+        inbox. No routing, no automation, no audit trail — and the alternatives don't fit.
+      </p>
+    </div>
+
+    <div class="mt-14 grid md:grid-cols-3 gap-5">
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="icon-tile" style="background:linear-gradient(180deg,rgba(239,68,68,0.18),rgba(239,68,68,0.04));border-color:rgba(239,68,68,0.22);color:#fca5a5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+        </div>
+        <h3 class="mt-4 font-semibold text-white" data-i18n="problem.c1t">Shared inboxes don't scale</h3>
+        <p class="mt-2 text-sm text-slate-400" data-i18n="problem.c1d">Messages get lost, double-handled, or silently dropped. There's no contact history, no ticketing, and no record of who did what.</p>
+      </div>
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="icon-tile" style="background:linear-gradient(180deg,rgba(245,158,11,0.18),rgba(245,158,11,0.04));border-color:rgba(245,158,11,0.22);color:#fcd34d">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <h3 class="mt-4 font-semibold text-white" data-i18n="problem.c2t">SaaS helpdesks are overkill</h3>
+        <p class="mt-2 text-sm text-slate-400" data-i18n="problem.c2d">Zendesk-class tools are expensive, host your customers' data on their servers, and bury simple routing under enterprise sprawl.</p>
+      </div>
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="icon-tile" style="background:linear-gradient(180deg,rgba(56,189,248,0.18),rgba(56,189,248,0.04));border-color:rgba(56,189,248,0.22);color:#7dd3fc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3 4 8.5 9.5 14"/><path d="M14.5 10 20 15.5 14.5 21"/><path d="M14 3 10 21"/></svg>
+        </div>
+        <h3 class="mt-4 font-semibold text-white" data-i18n="problem.c3t">DIY pipelines are a project</h3>
+        <p class="mt-2 text-sm text-slate-400" data-i18n="problem.c3d">Wiring up an inbound mail server, parser, queue, database, and rules engine yourself means servers to patch and bills to pay — before you send a single reply.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- SOLUTION / HOW IT WORKS -->
+  <section id="how" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="text-center max-w-2xl mx-auto">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="how.eyebrow">The solution</p>
+      <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="how.title">One Worker on the edge. Every email handled.</h2>
+      <p class="mt-4 text-slate-400" data-i18n="how.sub">
+        MailFlow deploys as a single Cloudflare Email Worker. Cloudflare routes your inbound mail straight to it —
+        no mail server, no queue infrastructure, no monthly SaaS seat. Here's the path every message takes:
+      </p>
+    </div>
+
+    <div class="mt-14 card-edge rounded-2xl bg-panel p-6 sm:p-10 overflow-x-auto">
+      <svg viewBox="0 0 980 360" class="w-full min-w-[760px]" font-family="ui-monospace, monospace" dir="ltr">
+        <defs>
+          <marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#f6821f"/>
+          </marker>
+          <linearGradient id="g" x1="0" x2="1">
+            <stop offset="0" stop-color="#f6821f"/><stop offset="1" stop-color="#fbad41"/>
+          </linearGradient>
+        </defs>
+        <rect x="20" y="150" width="150" height="60" rx="12" fill="#0a0a0f" stroke="#2a2a3c"/>
+        <text x="95" y="178" fill="#e2e8f0" font-size="13" text-anchor="middle">Inbound email</text>
+        <text x="95" y="196" fill="#64748b" font-size="11" text-anchor="middle">support@ · sales@</text>
+        <line x1="170" y1="180" x2="214" y2="180" stroke="#f6821f" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="218" y="150" width="150" height="60" rx="12" fill="#0a0a0f" stroke="#2a2a3c"/>
+        <text x="293" y="178" fill="#e2e8f0" font-size="13" text-anchor="middle">Cloudflare</text>
+        <text x="293" y="196" fill="#64748b" font-size="11" text-anchor="middle">Email Routing</text>
+        <line x1="368" y1="180" x2="412" y2="180" stroke="#f6821f" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="416" y="120" width="170" height="120" rx="14" fill="url(#g)" opacity="0.12" stroke="#f6821f"/>
+        <text x="501" y="148" fill="#fbad41" font-size="14" font-weight="bold" text-anchor="middle">MailFlow Worker</text>
+        <text x="501" y="170" fill="#cbd5e1" font-size="11" text-anchor="middle">parse MIME</text>
+        <text x="501" y="186" fill="#cbd5e1" font-size="11" text-anchor="middle">thread replies</text>
+        <text x="501" y="202" fill="#cbd5e1" font-size="11" text-anchor="middle">rules + workflows</text>
+        <text x="501" y="218" fill="#cbd5e1" font-size="11" text-anchor="middle">AI classify</text>
+        <text x="501" y="234" fill="#cbd5e1" font-size="11" text-anchor="middle">audit log</text>
+        <line x1="586" y1="150" x2="640" y2="95" stroke="#f6821f" stroke-width="2" marker-end="url(#ar)"/>
+        <line x1="586" y1="180" x2="640" y2="180" stroke="#f6821f" stroke-width="2" marker-end="url(#ar)"/>
+        <line x1="586" y1="210" x2="640" y2="265" stroke="#f6821f" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="644" y="65" width="150" height="56" rx="12" fill="#0a0a0f" stroke="#2a2a3c"/>
+        <text x="719" y="90" fill="#e2e8f0" font-size="12" text-anchor="middle">D1 database</text>
+        <text x="719" y="107" fill="#64748b" font-size="10.5" text-anchor="middle">emails · tickets · contacts</text>
+        <rect x="644" y="152" width="150" height="56" rx="12" fill="#0a0a0f" stroke="#2a2a3c"/>
+        <text x="719" y="177" fill="#e2e8f0" font-size="12" text-anchor="middle">R2 storage</text>
+        <text x="719" y="194" fill="#64748b" font-size="10.5" text-anchor="middle">attachments</text>
+        <rect x="644" y="239" width="150" height="56" rx="12" fill="#0a0a0f" stroke="#2a2a3c"/>
+        <text x="719" y="264" fill="#e2e8f0" font-size="12" text-anchor="middle">Outbound + alerts</text>
+        <text x="719" y="281" fill="#64748b" font-size="10.5" text-anchor="middle">replies · Telegram</text>
+        <line x1="794" y1="180" x2="838" y2="180" stroke="#38bdf8" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="842" y="150" width="118" height="60" rx="12" fill="#0a0a0f" stroke="#38bdf8" opacity="0.9"/>
+        <text x="901" y="178" fill="#7dd3fc" font-size="12" text-anchor="middle">Dashboard</text>
+        <text x="901" y="196" fill="#64748b" font-size="10.5" text-anchor="middle">you, in control</text>
+      </svg>
+      <p class="mt-4 text-center text-sm text-slate-500" data-i18n="how.caption">
+        Inbound mail is parsed, replies are threaded onto the right conversation, a contact is created or updated,
+        attachments go to R2, rules and workflows run, a ticket is opened when configured, AI classifies the message,
+        everything is logged — and you reply straight from the ticket.
+      </p>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- CLOSING THE GAP -->
+  <section id="gap" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="text-center max-w-2xl mx-auto">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="gap.eyebrow">Closing the gap</p>
+      <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="gap.title">The things that actually beat a shared inbox.</h2>
+      <p class="mt-4 text-slate-400" data-i18n="gap.sub">
+        A nice dashboard isn't enough. These are the workflow pieces that turn raw email into something a team can run on —
+        and they're built in, not on a roadmap.
+      </p>
+    </div>
+
+    <div class="mt-14 grid md:grid-cols-2 gap-5">
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="flex items-center gap-3">
+          <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M17 14l5 5-5 5"/></svg></div>
+          <h3 class="font-semibold text-white" data-i18n="gap.c1t">Conversations that thread</h3>
+        </div>
+        <p class="mt-3 text-sm text-slate-400" data-i18n-html="gap.c1d">When a customer replies, MailFlow matches it by <span class="font-mono text-slate-300">In-Reply-To</span> / <span class="font-mono text-slate-300">References</span> headers — falling back to a normalized subject — and appends it to the existing ticket instead of spawning a duplicate. The conversation stays in one place.</p>
+      </div>
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="flex items-center gap-3">
+          <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v6"/></svg></div>
+          <h3 class="font-semibold text-white" data-i18n="gap.c2t">Reply from the ticket</h3>
+        </div>
+        <p class="mt-3 text-sm text-slate-400" data-i18n="gap.c2d">Answer the customer right from the ticket view. The reply goes out through the Cloudflare email binding with correct threading headers, lands on the timeline, and advances the ticket status — no copy-pasting between tabs.</p>
+      </div>
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="flex items-center gap-3">
+          <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/><path d="M8 12h8M8 16h6"/></svg></div>
+          <h3 class="font-semibold text-white" data-i18n="gap.c3t">Internal notes &amp; canned replies</h3>
+        </div>
+        <p class="mt-3 text-sm text-slate-400" data-i18n="gap.c3d">Leave private notes on a ticket that the customer never sees, and drop in a saved template as a canned response. Update status, priority, and assignee from the same panel.</p>
+      </div>
+      <div class="card-edge rounded-2xl p-6 bg-panel reveal">
+        <div class="flex items-center gap-3">
+          <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+          <h3 class="font-semibold text-white" data-i18n="gap.c4t">Unified search</h3>
+        </div>
+        <p class="mt-3 text-sm text-slate-400" data-i18n="gap.c4d">One query searches across inbound emails, tickets, and contacts at once — so a growing mailbox stays navigable instead of becoming a black hole.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- FEATURES -->
+  <section id="features" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="text-center max-w-2xl mx-auto">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="features.eyebrow">What's inside</p>
+      <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="features.title">A full email back-office, included.</h2>
+    </div>
+    <div class="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f1t">Dashboard &amp; Analytics</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f1d">Live view of volume, tickets, and activity across every inbox.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 8l9 6 9-6"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f2t">Inboxes &amp; Routing</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f2d">Map any address to logic. One Worker, many inboxes.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2.1-1.5-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.6 2.7a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2.1 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2L3 14.7l2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.6-2.7a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2.1-1.5c.1-.4.1-.8.1-1.2Z"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f3t">Rules &amp; Workflows</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f3d">Condition-based rules trigger multi-step workflows with retries.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"/><path d="M13 5v14"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f4t">Tickets &amp; Threads</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f4d">Auto-create tickets, thread replies into one conversation, and answer from the timeline.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f5t">Unified Search</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f5d">Search emails, tickets, and contacts from a single query.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="2"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><path d="M12 4v2M9 18v2M15 18v2"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f6t">AI Automation</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f6d">Classify and triage with OpenAI, OpenRouter, or local Ollama. Off by default.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><rect x="3" y="15" width="18" height="6" rx="2"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f7t">Native Outbound</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f7d">Send transactional replies, OTPs, and alerts via Cloudflare's email binding.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5L10 19a2 2 0 0 1-2.8-2.8l8-8"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f8t">Attachments</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f8d">Metadata indexed in D1, files stored in R2 when enabled.</p>
+      </div>
+      <div class="card-edge rounded-xl p-5 bg-panel reveal">
+        <div class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11h6M9 15h6M7 7h10"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg></div>
+        <h3 class="mt-3 font-semibold text-white" data-i18n="f9t">Audit Logs</h3>
+        <p class="mt-1.5 text-sm text-slate-400" data-i18n="f9d">Every action recorded, with secrets automatically redacted.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- UNDER THE HOOD -->
+  <section id="deepdive" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="text-center max-w-2xl mx-auto">
+      <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="dd.eyebrow">Under the hood</p>
+      <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="dd.title">The decisions behind the features.</h2>
+      <p class="mt-4 text-slate-400" data-i18n="dd.sub">Not just what it does — why it's built this way. A few engineering choices that keep MailFlow small, correct, and portable.</p>
+    </div>
+
+    <div class="mt-14 grid md:grid-cols-2 gap-5">
+      <div class="card-edge rounded-2xl p-6 bg-panel transition">
+        <span class="text-[11px] font-semibold tracking-wide uppercase text-brand2">01 · <span data-i18n="dd.label">Design decision</span></span>
+        <h3 class="mt-2 font-semibold text-white" data-i18n="dd.c1t">Threading without a fragile thread table</h3>
+        <p class="mt-2.5 text-sm text-slate-400 leading-6" data-i18n="dd.c1d">Email has no reliable conversation id, so MailFlow matches an inbound reply on its In-Reply-To / References message-ids against messages already attached to a ticket. When the headers are missing it falls back to a normalized subject for the same contact — but only when the subject actually looks like a reply (Re:/Fwd:), so two unrelated emails that share a subject never merge.</p>
+        <div class="mt-4 keep-ltr font-mono text-xs text-slate-500 border-t border-white/5 pt-3">In-Reply-To → References → normalized-subject fallback</div>
+      </div>
+
+      <div class="card-edge rounded-2xl p-6 bg-panel transition">
+        <span class="text-[11px] font-semibold tracking-wide uppercase text-brand2">02 · <span data-i18n="dd.label">Design decision</span></span>
+        <h3 class="mt-2 font-semibold text-white" data-i18n="dd.c2t">Replies that thread in the customer's client</h3>
+        <p class="mt-2.5 text-sm text-slate-400 leading-6" data-i18n="dd.c2d">Outbound goes through Cloudflare's email binding. MailFlow builds the raw MIME with Message-ID, In-Reply-To and References so Gmail and Outlook group the reply into the original thread. The exact text sent — rendered from the template, not a placeholder — is written to the ticket timeline, and the status advances automatically.</p>
+        <div class="mt-4 keep-ltr font-mono text-xs text-slate-500 border-t border-white/5 pt-3">Message-ID · In-Reply-To · References → timeline + status</div>
+      </div>
+
+      <div class="card-edge rounded-2xl p-6 bg-panel transition">
+        <span class="text-[11px] font-semibold tracking-wide uppercase text-brand2">03 · <span data-i18n="dd.label">Design decision</span></span>
+        <h3 class="mt-2 font-semibold text-white" data-i18n="dd.c3t">LIKE over FTS5 — on purpose</h3>
+        <p class="mt-2.5 text-sm text-slate-400 leading-6" data-i18n="dd.c3d">Unified search runs case-insensitive LIKE (with ESCAPE and capped input) across emails, tickets and contacts in one round trip. It's portable across any SQLite/D1 build and needs zero triggers to maintain — the right trade-off for a small self-hosted tool. FTS5 is the drop-in upgrade when volume demands it.</p>
+        <div class="mt-4 keep-ltr font-mono text-xs text-slate-500 border-t border-white/5 pt-3">emails + tickets + contacts → one query</div>
+      </div>
+
+      <div class="card-edge rounded-2xl p-6 bg-panel transition">
+        <span class="text-[11px] font-semibold tracking-wide uppercase text-brand2">04 · <span data-i18n="dd.label">Design decision</span></span>
+        <h3 class="mt-2 font-semibold text-white" data-i18n="dd.c4t">One source of truth for two languages</h3>
+        <p class="mt-2.5 text-sm text-slate-400 leading-6" data-i18n="dd.c4d">The UI is authored once in English; a dictionary localizes the chrome to Arabic at render time, and the same map reverses it back to English. A cookie picks the language and flips the layout to RTL/LTR — so both languages stay in sync from a single codebase, with Arabic as the default.</p>
+        <div class="mt-4 keep-ltr font-mono text-xs text-slate-500 border-t border-white/5 pt-3">localizeHtml ⇄ enFromAr · cookie · RTL/LTR</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- TODAY'S SCOPE (honest limitations) -->
+  <section id="scope" class="max-w-6xl mx-auto px-5 py-16">
+    <div class="card-edge rounded-2xl bg-panel/60 px-6 py-7 reveal">
+      <div class="flex flex-wrap items-start gap-6">
+        <div class="min-w-[180px]">
+          <p class="text-brand font-semibold text-xs tracking-wide uppercase" data-i18n="scope.eyebrow">Today's scope</p>
+          <h3 class="mt-1.5 text-lg font-semibold text-white" data-i18n="scope.title">What this isn't (yet).</h3>
+        </div>
+        <ul class="flex flex-wrap gap-2 text-xs text-slate-400 flex-1">
+          <li class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5" data-i18n="scope.b1">Single-admin auth — RBAC tables exist, enforcement on the roadmap</li>
+          <li class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5" data-i18n="scope.b2">AI classification is opt-in, off by default</li>
+          <li class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5" data-i18n="scope.b3">Transactional outbound, not bulk newsletter (use a dedicated ESP for that)</li>
+          <li class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5" data-i18n="scope.b4">Cloudflare Email Routing configured by hand once per address</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- SECURITY -->
+  <section id="security" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="grid lg:grid-cols-2 gap-12 items-center">
+      <div>
+        <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="sec.eyebrow">Hardened by default</p>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="sec.title">Security isn't a roadmap item here.</h2>
+        <p class="mt-4 text-slate-400" data-i18n="sec.sub">
+          MailFlow ships with production hardening built in — because an email gateway is exactly the
+          kind of surface attackers probe. It's documented, tested, and on by default.
+        </p>
+        <a href="https://github.com/ahmedvnabil/mailflow/blob/main/SECURITY.md" class="mt-6 inline-flex items-center gap-2 text-brand2 hover:text-brand font-medium" data-i18n="sec.read">Read SECURITY.md →</a>
+      </div>
+      <ul class="space-y-3">
+        <li class="flex gap-3 card-edge bg-panel rounded-xl p-4"><span class="text-emerald-400">✓</span><span class="text-sm text-slate-300" data-i18n-html="sec.b1"><b class="text-white">Constant-time auth</b> — admin keys compared with timing-safe equality; HttpOnly, Secure, SameSite cookies.</span></li>
+        <li class="flex gap-3 card-edge bg-panel rounded-xl p-4"><span class="text-emerald-400">✓</span><span class="text-sm text-slate-300" data-i18n-html="sec.b2"><b class="text-white">SSRF protection</b> — outbound calls block localhost, private IP ranges, metadata IPs, and URL credentials.</span></li>
+        <li class="flex gap-3 card-edge bg-panel rounded-xl p-4"><span class="text-emerald-400">✓</span><span class="text-sm text-slate-300" data-i18n-html="sec.b3"><b class="text-white">HTML sanitization</b> — inbound email bodies are stripped of scripts and handlers before storage.</span></li>
+        <li class="flex gap-3 card-edge bg-panel rounded-xl p-4"><span class="text-emerald-400">✓</span><span class="text-sm text-slate-300" data-i18n-html="sec.b4"><b class="text-white">Secret redaction</b> — tokens and keys are masked in logs; secret settings are write-only.</span></li>
+        <li class="flex gap-3 card-edge bg-panel rounded-xl p-4"><span class="text-emerald-400">✓</span><span class="text-sm text-slate-300" data-i18n-html="sec.b5"><b class="text-white">Rate &amp; size limits</b> — KV-backed rate limiting, request body caps, and per-day outbound quotas.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="max-w-6xl mx-auto px-5"><div class="fade-line h-px"></div></div>
+
+  <!-- QUICK START -->
+  <section id="start" class="max-w-6xl mx-auto px-5 py-24">
+    <div class="grid lg:grid-cols-2 gap-12 items-center">
+      <div>
+        <p class="text-brand font-semibold text-sm tracking-wide uppercase" data-i18n="start.eyebrow">Quick start</p>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-bold text-white" data-i18n="start.title">Running locally in under a minute.</h2>
+        <p class="mt-4 text-slate-400" data-i18n="start.sub">
+          Clone, install, and spin up the Wrangler dev server. The full stack — D1, Email Worker, dashboard —
+          runs on your machine. Deploy to Cloudflare when you're ready.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="https://github.com/ahmedvnabil/mailflow" class="glow bg-gradient-to-br from-brand to-brand2 text-ink font-semibold rounded-xl px-6 py-3 hover:brightness-110 transition" data-i18n="start.get">Get the code</a>
+          <a href="https://github.com/ahmedvnabil/mailflow/blob/main/DEPLOYMENT.md" class="border border-white/15 hover:border-white/30 text-white font-medium rounded-xl px-6 py-3 transition" data-i18n="start.deploy">Deployment guide</a>
+        </div>
+      </div>
+      <div class="card-edge rounded-2xl bg-[#0c0c14] overflow-hidden keep-ltr">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+          <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-amber-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-emerald-500/70"></span>
+          <span class="ml-2 text-xs text-slate-500 font-mono">terminal</span>
+        </div>
+        <pre class="p-5 text-sm font-mono leading-7 overflow-x-auto"><code><span class="text-slate-500"># clone &amp; install</span>
+<span class="text-brand2">git</span> clone https://github.com/ahmedvnabil/mailflow
+<span class="text-brand2">cd</span> mailflow-studio &amp;&amp; <span class="text-brand2">npm</span> install
+
+<span class="text-slate-500"># configure</span>
+<span class="text-brand2">cp</span> .dev.vars.example .dev.vars
+<span class="text-brand2">cp</span> wrangler.toml.example wrangler.toml
+
+<span class="text-slate-500"># migrate &amp; run</span>
+<span class="text-brand2">npm</span> run migrate:local
+<span class="text-brand2">npm</span> run dev   <span class="text-slate-500"># → http://localhost:8787</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="max-w-6xl mx-auto px-5 pb-24">
+    <div class="glow rounded-3xl bg-gradient-to-br from-panel to-[#0c0c14] card-edge p-10 sm:p-16 text-center">
+      <h2 class="text-3xl sm:text-4xl font-bold text-white" data-i18n="cta.title">Own your email pipeline.</h2>
+      <p class="mt-4 max-w-xl mx-auto text-slate-400" data-i18n="cta.sub">Self-hosted, MIT-licensed, and built for the edge. Star it, fork it, ship it.</p>
+      <div class="mt-8 flex flex-wrap justify-center gap-3">
+        <a href="https://github.com/ahmedvnabil/mailflow" class="glow bg-gradient-to-br from-brand to-brand2 text-ink font-semibold rounded-xl px-7 py-3.5 hover:brightness-110 transition" data-i18n="cta.star">★ Star on GitHub</a>
+        <a href="https://github.com/ahmedvnabil/mailflow/blob/main/README.md" class="border border-white/15 hover:border-white/30 text-white font-medium rounded-xl px-7 py-3.5 transition" data-i18n="cta.docs">Read the docs</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/5 mt-8">
+    <div class="max-w-6xl mx-auto px-5 py-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+      <div>
+        <div class="flex items-center gap-2 text-white font-semibold">
+          <span class="grid place-items-center w-7 h-7 rounded-md bg-gradient-to-br from-brand to-brand2 text-ink font-bold text-xs">M</span>
+          MailFlow <span class="text-slate-500 font-normal">Studio</span>
+        </div>
+        <p class="mt-3 text-slate-500 leading-6" data-i18n="footer.tag">An open-source email operations platform on Cloudflare Workers — yours to run, fork, and ship.</p>
+      </div>
+      <div>
+        <div class="text-white/80 font-medium" data-i18n="footer.product">Product</div>
+        <ul class="mt-3 space-y-2 text-slate-500">
+          <li><a href="#demo" class="hover:text-white transition" data-i18n="nav.demo">Demo</a></li>
+          <li><a href="#screens" class="hover:text-white transition" data-i18n="nav.screens">Screens</a></li>
+          <li><a href="#features" class="hover:text-white transition" data-i18n="nav.features">Features</a></li>
+          <li><a href="#deepdive" class="hover:text-white transition" data-i18n="nav.deepdive">Under the hood</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-white/80 font-medium" data-i18n="footer.docs">Docs</div>
+        <ul class="mt-3 space-y-2 text-slate-500">
+          <li><a href="https://github.com/ahmedvnabil/mailflow/blob/main/README.md" class="hover:text-white transition" data-i18n="footer.readme">README</a></li>
+          <li><a href="https://github.com/ahmedvnabil/mailflow/blob/main/APIs.md" class="hover:text-white transition" data-i18n="footer.api">API reference</a></li>
+          <li><a href="https://github.com/ahmedvnabil/mailflow/blob/main/SECURITY.md" class="hover:text-white transition" data-i18n="footer.security">Security</a></li>
+          <li><a href="https://github.com/ahmedvnabil/mailflow/blob/main/CONTRIBUTING.md" class="hover:text-white transition" data-i18n="footer.contrib">Contributing</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-white/80 font-medium" data-i18n="footer.project">Project</div>
+        <ul class="mt-3 space-y-2 text-slate-500">
+          <li><a href="https://github.com/ahmedvnabil/mailflow" class="hover:text-white transition">GitHub</a></li>
+          <li><a href="https://github.com/ahmedvnabil/mailflow/blob/main/LICENSE" class="hover:text-white transition" data-i18n="footer.license">MIT License</a></li>
+          <li><span data-i18n="footer.built">Built on Cloudflare Workers · Hono · D1 · TypeScript</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-white/5">
+      <div class="max-w-6xl mx-auto px-5 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+        <span data-i18n="footer.copy">© 2026 MailFlow Studio contributors · MIT</span>
+        <span class="keep-ltr font-mono">v0.1 · main</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Arabic dictionary (English stays in the DOM as the default/source).
+    const AR = {
+      "nav.demo":"العرض","nav.screens":"اللقطات","nav.problem":"المشكلة","nav.how":"كيف يعمل","nav.gap":"سدّ الفجوة","nav.deepdive":"تحت الغطاء","nav.features":"المميزات","nav.start":"البداية السريعة","nav.github":"GitHub",
+      "hero.badge":"مفتوح المصدر · رخصة MIT · يعمل على الباقة المجانية من Cloudflare",
+      "hero.title1":"بريد عملك،",
+      "hero.title2":"كمنصّة تشغيل متكاملة.",
+      "hero.sub":"MailFlow Studio يقف بين بريدك الوارد ووجهته — ثم يخزّن، ويجمّع المحادثات، ويوجّه، ويؤتمت، ويسجّل كل رسالة. بالكامل على Cloudflare Workers. على بنيتك التحتية أنت.",
+      "hero.star":"★ ضع نجمة على GitHub","hero.watch":"شاهد العرض ←",
+      "stats.tests":"اختبار ناجح","stats.loc":"سطر TypeScript","stats.servers":"خوادم لإدارتها","stats.noreact":"بدون React · بدون Vue",
+      "demo.eyebrow":"شاهده وهو يعمل","demo.title":"جمّع · ردّ · ابحث — في مكان واحد.","demo.caption":"جولة متكررة على أهم ثلاث مهام. بدون صوت، بدون حشو.",
+      "screens.eyebrow":"لقطات حقيقية","screens.title":"التطبيق الفعلي، لا نموذج مرسوم.","screens.sub":"التُقطت مباشرة من التطبيق المحلي ببيانات حقيقية مزروعة — نفس الـ Worker، نفس الواجهة، نفس مفتاح اللغة.",
+      "screens.cap.dashboard":"اللوحة — الجاهزية، عدّاد التذاكر، النشاط الحيّ.","screens.cap.emails":"الإيميلات — كل رسالة واردة في عرض تشغيلي واحد.","screens.cap.search":"البحث — إيميلات وتذاكر وجهات اتصال في استعلام واحد.","screens.cap.ticket":"التذكرة — محرّر الرد، الخط الزمني، الملاحظات الداخلية.",
+      "problem.eyebrow":"الفجوة","problem.title":"بريد العمل هو المكان الذي يموت فيه التنظيم.",
+      "problem.sub":"عناوين مثل <span class=\"font-mono text-slate-300\">support@</span> و <span class=\"font-mono text-slate-300\">sales@</span> و <span class=\"font-mono text-slate-300\">billing@</span> و <span class=\"font-mono text-slate-300\">jobs@</span> تصل إلى صندوق وارد مشترك. لا توجيه، لا أتمتة، لا سجل تدقيق — والبدائل لا تناسب.",
+      "problem.c1t":"الصناديق المشتركة لا تتوسّع","problem.c1d":"الرسائل تضيع أو تُعالَج مرتين أو تسقط بصمت. لا تاريخ لجهات الاتصال، ولا تذاكر، ولا سجل لمن فعل ماذا.",
+      "problem.c2t":"أدوات الدعم الجاهزة مبالَغ فيها","problem.c2d":"أدوات بحجم Zendesk غالية، وتستضيف بيانات عملائك على خوادمها، وتدفن التوجيه البسيط تحت تعقيد المؤسسات.",
+      "problem.c3t":"البناء اليدوي مشروع كامل","problem.c3d":"توصيل خادم بريد ومحلِّل وطابور وقاعدة بيانات ومحرّك قواعد بنفسك يعني خوادم تصونها وفواتير تدفعها — قبل أن ترسل ردًّا واحدًا.",
+      "how.eyebrow":"الحل","how.title":"Worker واحد على الحافة. كل إيميل يُعالَج.",
+      "how.sub":"MailFlow يُنشَر كـ Cloudflare Email Worker واحد. Cloudflare يوجّه بريدك الوارد إليه مباشرة — بدون خادم بريد، بدون بنية طوابير، بدون اشتراك SaaS شهري. هذا مسار كل رسالة:",
+      "how.caption":"يُحلَّل البريد الوارد، وتُجمَّع الردود في محادثتها الصحيحة، ويُنشأ أو يُحدَّث جهة الاتصال، وتذهب المرفقات إلى R2، وتعمل القواعد وسير العمل، وتُفتح تذكرة عند الحاجة، ويصنّف الذكاء الاصطناعي الرسالة، ويُسجَّل كل شيء — وتردّ مباشرة من التذكرة.",
+      "gap.eyebrow":"سدّ الفجوة","gap.title":"الأشياء التي تتفوّق فعلاً على الصندوق المشترك.",
+      "gap.sub":"لوحة جميلة لا تكفي. هذه هي قطع سير العمل التي تحوّل البريد الخام إلى شيء يعمل عليه فريق — وهي مدمجة، لا على خارطة طريق.",
+      "gap.c1t":"محادثات تتجمّع تلقائيًا","gap.c1d":"عندما يردّ العميل، يطابقه MailFlow عبر ترويستَي <span class=\"font-mono text-slate-300\">In-Reply-To</span> / <span class=\"font-mono text-slate-300\">References</span> — مع الرجوع إلى الموضوع المُطبَّع — ويُلحقه بالتذكرة الموجودة بدل إنشاء نسخة مكررة. تبقى المحادثة في مكان واحد.",
+      "gap.c2t":"الردّ من التذكرة","gap.c2d":"ردّ على العميل مباشرة من شاشة التذكرة. يخرج الردّ عبر ربط بريد Cloudflare بترويسات تجميع صحيحة، ويظهر في الخط الزمني، ويُقدّم حالة التذكرة — بدون نسخ ولصق بين التبويبات.",
+      "gap.c3t":"ملاحظات داخلية وردود جاهزة","gap.c3d":"اترك ملاحظات خاصة على التذكرة لا يراها العميل، وأدرج قالبًا محفوظًا كردّ جاهز. حدّث الحالة والأولوية والمسؤول من نفس اللوحة.",
+      "gap.c4t":"بحث موحّد","gap.c4d":"استعلام واحد يبحث عبر الإيميلات والتذاكر وجهات الاتصال معًا — ليبقى صندوق متنامٍ قابلاً للتصفّح بدل أن يصير ثقبًا أسود.",
+      "features.eyebrow":"ماذا بالداخل","features.title":"مكتب خلفي كامل للبريد، مضمَّن.",
+      "f1t":"لوحة وتحليلات","f1d":"عرض حيّ للحجم والتذاكر والنشاط عبر كل صندوق.",
+      "f2t":"صناديق وتوجيه","f2d":"اربط أي عنوان بمنطق. Worker واحد، صناديق متعددة.",
+      "f3t":"قواعد وسير عمل","f3d":"قواعد شرطية تُشغّل سير عمل متعدد الخطوات مع إعادة المحاولة.",
+      "f4t":"تذاكر ومحادثات","f4d":"أنشئ التذاكر تلقائيًا، اجمع الردود في محادثة واحدة، وردّ من الخط الزمني.",
+      "f5t":"بحث موحّد","f5d":"ابحث في الإيميلات والتذاكر وجهات الاتصال من استعلام واحد.",
+      "f6t":"أتمتة بالذكاء الاصطناعي","f6d":"صنّف وافرز عبر OpenAI أو OpenRouter أو Ollama المحلي. معطّل افتراضيًا.",
+      "f7t":"إرسال أصيل","f7d":"أرسل ردودًا ورسائل OTP وتنبيهات عبر ربط بريد Cloudflare.",
+      "f8t":"مرفقات","f8d":"بيانات وصفية مفهرسة في D1، وملفات في R2 عند التفعيل.",
+      "f9t":"سجلات تدقيق","f9d":"كل إجراء مُسجَّل، مع إخفاء الأسرار تلقائيًا.",
+      "dd.eyebrow":"تحت الغطاء","dd.title":"القرارات الهندسية وراء المميزات.",
+      "dd.sub":"ليس فقط ماذا يفعل — بل لماذا بُني هكذا. بعض القرارات الهندسية التي تُبقي MailFlow صغيرًا وصحيحًا وقابلاً للنقل.",
+      "dd.label":"قرار تصميمي",
+      "dd.c1t":"تجميع المحادثات بدون جدول هشّ",
+      "dd.c1d":"البريد لا يملك معرّف محادثة موثوقًا، لذا يطابق MailFlow الردّ الوارد عبر معرّفات In-Reply-To / References مع الرسائل المرتبطة بتذكرة بالفعل. وعند غياب الترويسات يرجع إلى الموضوع المُطبَّع لنفس جهة الاتصال — لكن فقط حين يبدو الموضوع ردًّا فعلاً (Re:/Fwd:)، حتى لا تندمج رسالتان غير مرتبطتين تتشاركان العنوان.",
+      "dd.c2t":"ردود تتجمّع داخل بريد العميل",
+      "dd.c2d":"يخرج البريد الصادر عبر ربط بريد Cloudflare. يبني MailFlow الـ MIME الخام بترويسات Message-ID و In-Reply-To و References ليجمّع Gmail و Outlook الردّ في المحادثة الأصلية. والنص المُرسَل بالضبط — المُولّد من القالب لا عبارة بديلة — يُكتَب في الخط الزمني للتذكرة، وتتقدّم الحالة تلقائيًا.",
+      "dd.c3t":"LIKE بدل FTS5 — عن قصد",
+      "dd.c3d":"يعمل البحث الموحّد بـ LIKE غير الحسّاس لحالة الأحرف (مع ESCAPE وحدّ لطول الاستعلام) عبر الإيميلات والتذاكر وجهات الاتصال في جولة واحدة. وهو قابل للنقل على أي بناء SQLite/D1 ولا يحتاج أي triggers للصيانة — المقايضة الصحيحة لأداة صغيرة ذاتية الاستضافة. و FTS5 ترقية جاهزة عند نموّ الحجم.",
+      "dd.c4t":"مصدر واحد للحقيقة بلغتين",
+      "dd.c4d":"الواجهة مكتوبة مرة واحدة بالإنجليزية؛ قاموس يترجم الواجهة إلى العربية وقت العرض، ونفس الخريطة تعكسها إلى الإنجليزية. كوكي يختار اللغة ويقلب الاتجاه RTL/LTR — لتبقى اللغتان متزامنتين من قاعدة كود واحدة، والعربية هي الافتراضية.",
+      "sec.eyebrow":"محصَّن افتراضيًا","sec.title":"الأمان ليس بندًا على خارطة الطريق هنا.",
+      "sec.sub":"MailFlow يأتي بتحصين إنتاجي مدمج — لأن بوابة البريد بالضبط هي السطح الذي يفحصه المهاجمون. موثّق ومُختبَر ومُفعّل افتراضيًا.",
+      "sec.read":"اقرأ SECURITY.md ←",
+      "sec.b1":"<b class=\"text-white\">مصادقة ثابتة الزمن</b> — مفاتيح الأدمن تُقارَن بمساواة ثابتة الزمن؛ كوكيز HttpOnly و Secure و SameSite.",
+      "sec.b2":"<b class=\"text-white\">حماية SSRF</b> — المكالمات الصادرة تحجب localhost ونطاقات IP الخاصة و IP بيانات التعريف وبيانات اعتماد الروابط.",
+      "sec.b3":"<b class=\"text-white\">تنظيف HTML</b> — أجسام البريد الواردة تُجرَّد من السكربتات والمعالِجات قبل التخزين.",
+      "sec.b4":"<b class=\"text-white\">إخفاء الأسرار</b> — التوكنات والمفاتيح تُخفى في السجلات؛ إعدادات الأسرار للكتابة فقط.",
+      "sec.b5":"<b class=\"text-white\">حدود المعدّل والحجم</b> — تحديد معدّل مدعوم بـ KV، وحدود لحجم الطلب، وحصص إرسال يومية.",
+      "start.eyebrow":"بداية سريعة","start.title":"يعمل محليًا في أقل من دقيقة.",
+      "start.sub":"استنسخ، ثبّت، وشغّل خادم Wrangler التطويري. كامل الحزمة — D1 و Email Worker واللوحة — يعمل على جهازك. انشر على Cloudflare عندما تجهز.",
+      "start.get":"احصل على الكود","start.deploy":"دليل النشر",
+      "cta.title":"امتلك خط بريدك.","cta.sub":"ذاتي الاستضافة، برخصة MIT، ومبني للحافة. ضع نجمة، انسخه، أطلِقه.","cta.star":"★ ضع نجمة على GitHub","cta.docs":"اقرأ التوثيق",
+      "footer.built":"مبني على Cloudflare Workers · Hono · D1 · TypeScript",
+      "scope.eyebrow":"النطاق الحالي","scope.title":"ما لم يصل بعد.",
+      "scope.b1":"مصادقة مسؤول واحد — جداول الأدوار موجودة، والتفعيل في خارطة الطريق",
+      "scope.b2":"تصنيف الذكاء الاصطناعي اختياري، معطّل افتراضيًا",
+      "scope.b3":"إرسال معاملاتي لا حملات بريدية ضخمة (لذلك استخدم خدمة بريد متخصصة)",
+      "scope.b4":"توجيه Cloudflare Email Routing يُضبط يدويًا مرة لكل عنوان",
+      "footer.tag":"منصّة عمليات بريد مفتوحة المصدر على Cloudflare Workers — لك أن تشغّلها وتنسخها وتطلِقها.",
+      "footer.product":"المنتج","footer.docs":"التوثيق","footer.project":"المشروع",
+      "footer.readme":"اقرأني","footer.api":"مرجع الـ API","footer.security":"الأمان","footer.contrib":"المساهمة",
+      "footer.license":"رخصة MIT","footer.copy":"© 2026 مساهمو MailFlow Studio · MIT"
+    };
+
+    function applyArabic() {
+      const root = document.documentElement;
+      root.lang = "ar"; root.dir = "rtl";
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        const v = AR[el.getAttribute('data-i18n')]; if (v != null) el.textContent = v;
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+        const v = AR[el.getAttribute('data-i18n-html')]; if (v != null) el.innerHTML = v;
+      });
+      const b = document.getElementById('langToggle'); if (b) b.textContent = "EN";
+    }
+    function getLang() { try { return localStorage.getItem('mf_lang') || 'en'; } catch (e) { return 'en'; } }
+    function toggleLang() {
+      const next = getLang() === 'ar' ? 'en' : 'ar';
+      try { localStorage.setItem('mf_lang', next); } catch (e) {}
+      location.reload();
+    }
+    if (getLang() === 'ar') applyArabic();
+
+    // Scroll progress
+    (function () {
+      const bar = document.getElementById('scrollbar');
+      function tick() {
+        const h = document.documentElement;
+        const max = h.scrollHeight - h.clientHeight;
+        const pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+        if (bar) bar.style.width = pct.toFixed(1) + '%';
+      }
+      window.addEventListener('scroll', tick, { passive: true });
+      tick();
+    })();
+
+    // Scroll-spy nav
+    (function () {
+      const links = document.querySelectorAll('.nav-link');
+      const map = new Map();
+      links.forEach(function (a) {
+        const id = (a.getAttribute('href') || '').replace('#', '');
+        const sec = id && document.getElementById(id);
+        if (sec) map.set(sec, a);
+      });
+      if (!('IntersectionObserver' in window) || map.size === 0) return;
+      const io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          const a = map.get(e.target);
+          if (!a) return;
+          if (e.isIntersecting && e.intersectionRatio > 0.25) {
+            links.forEach(function (l) { l.classList.remove('is-active'); });
+            a.classList.add('is-active');
+          }
+        });
+      }, { threshold: [0.25, 0.5] });
+      map.forEach(function (_a, sec) { io.observe(sec); });
+    })();
+
+    // Reveal on scroll
+    (function () {
+      const els = document.querySelectorAll('.reveal');
+      if (!els.length) return;
+      if (!('IntersectionObserver' in window)) {
+        els.forEach(function (el) { el.classList.add('is-in'); });
+        return;
+      }
+      const io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-in');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      els.forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+
+</body>
+</html>

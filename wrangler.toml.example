@@ -1,0 +1,27 @@
+name = "mailflow-studio"
+main = "src/index.ts"
+compatibility_date = "2026-06-13"
+workers_dev = false
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "email_gateway_studio"
+database_id = "replace-with-cloudflare-d1-database-id"
+
+[[send_email]]
+name = "EMAIL"
+allowed_sender_addresses = ["noreply@yourdomain.com", "support@yourdomain.com"]
+
+# Optional production bindings:
+# [[routes]]
+# pattern = "mailflow.yourdomain.com"
+# custom_domain = true
+#
+# [[kv_namespaces]]
+# binding = "CONFIG_CACHE"
+# id = "replace-with-kv-namespace-id"
+#
+# [[r2_buckets]]
+# binding = "ATTACHMENTS"
+# bucket_name = "mailflow-attachments"

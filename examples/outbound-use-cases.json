@@ -1,0 +1,47 @@
+{
+  "otp_email": {
+    "from": "noreply@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Your sign-in code is 123456",
+    "text": "Use 123456 to sign in. This code expires in 10 minutes.",
+    "html": "<p>Use <strong>123456</strong> to sign in. This code expires in 10 minutes.</p>",
+    "template_id": null,
+    "data": {}
+  },
+  "contact_form_reply": {
+    "from": "support@yourdomain.com",
+    "to": "lead@example.com",
+    "subject": "We received your message",
+    "text": "Thanks for contacting us. A team member will reply soon.",
+    "html": "<p>Thanks for contacting us. A team member will reply soon.</p>",
+    "template_id": null,
+    "data": {}
+  },
+  "ticket_notification": {
+    "from": "support@yourdomain.com",
+    "to": "customer@example.com",
+    "subject": "Ticket MFS-1234 was updated",
+    "text": "Your ticket has a new update: We are reviewing the invoice details.",
+    "html": "<p>Your ticket has a new update: We are reviewing the invoice details.</p>",
+    "template_id": null,
+    "data": {}
+  },
+  "workflow_alert": {
+    "from": "noreply@yourdomain.com",
+    "to": "ops@example.com",
+    "subject": "Workflow alert: invoice keyword matched",
+    "text": "A routed email matched the invoice workflow and needs review.",
+    "html": "<p>A routed email matched the invoice workflow and needs review.</p>",
+    "template_id": null,
+    "data": {}
+  },
+  "welcome_email": {
+    "from": "noreply@yourdomain.com",
+    "to": "new-user@example.com",
+    "subject": "Welcome to MailFlow Studio",
+    "text": "Welcome. Your workspace is ready.",
+    "html": "<p>Welcome. Your workspace is ready.</p>",
+    "template_id": null,
+    "data": {}
+  }
+}

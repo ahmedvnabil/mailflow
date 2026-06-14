@@ -1,0 +1,7 @@
+/* Zad — Arabic web font (derived from IBM Plex Sans Arabic, SIL OFL 1.1).
+   Source: https://github.com/ahmedvnabil/zad-font */
+@font-face { font-family: "Zad"; font-style: normal; font-weight: 300; font-display: swap; src: url("./Zad-Light.woff2") format("woff2"); }
+@font-face { font-family: "Zad"; font-style: normal; font-weight: 400; font-display: swap; src: url("./Zad-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Zad"; font-style: normal; font-weight: 500; font-display: swap; src: url("./Zad-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Zad"; font-style: normal; font-weight: 600; font-display: swap; src: url("./Zad-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Zad"; font-style: normal; font-weight: 700; font-display: swap; src: url("./Zad-Bold.woff2") format("woff2"); }

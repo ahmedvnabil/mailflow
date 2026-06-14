@@ -1,0 +1,6 @@
+ADMIN_API_KEY=replace-with-a-long-random-admin-key
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+OLLAMA_BASE_URL=http://localhost:11434

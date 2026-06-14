@@ -1,0 +1,4 @@
+# Keep the marketing landing folder local-only.
+# If this folder is ever configured as a Cloudflare Workers assets directory,
+# do not upload its files with the Worker deployment.
+**

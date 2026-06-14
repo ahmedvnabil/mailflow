@@ -1,0 +1,169 @@
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'agent',
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS inboxes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  email_addresses_json TEXT NOT NULL DEFAULT '[]',
+  assigned_team TEXT NOT NULL DEFAULT '',
+  color TEXT NOT NULL DEFAULT '#2563eb',
+  priority INTEGER NOT NULL DEFAULT 100,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL UNIQUE,
+  company TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  total_emails INTEGER NOT NULL DEFAULT 0,
+  first_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS emails (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  legacy_event_id INTEGER,
+  message_id TEXT NOT NULL,
+  from_email TEXT NOT NULL,
+  to_email TEXT NOT NULL,
+  cc TEXT,
+  bcc TEXT,
+  reply_to TEXT,
+  subject TEXT NOT NULL,
+  text_body TEXT,
+  html_body TEXT,
+  body_preview TEXT NOT NULL,
+  headers_json TEXT NOT NULL DEFAULT '{}',
+  attachments_json TEXT NOT NULL DEFAULT '[]',
+  inbox_id INTEGER,
+  contact_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'received',
+  classification TEXT,
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  received_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (legacy_event_id) REFERENCES email_events(id) ON DELETE SET NULL,
+  FOREIGN KEY (inbox_id) REFERENCES inboxes(id) ON DELETE SET NULL,
+  FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_number TEXT NOT NULL UNIQUE,
+  subject TEXT NOT NULL,
+  contact_id INTEGER,
+  email_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'open',
+  priority TEXT NOT NULL DEFAULT 'normal',
+  inbox_id INTEGER,
+  assigned_user TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+  FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE SET NULL,
+  FOREIGN KEY (inbox_id) REFERENCES inboxes(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS ticket_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_id INTEGER NOT NULL,
+  email_id INTEGER,
+  author_type TEXT NOT NULL DEFAULT 'contact',
+  body TEXT NOT NULL,
+  internal_note INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+  FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS workflows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  trigger_type TEXT NOT NULL DEFAULT 'new_email',
+  conditions_json TEXT NOT NULL DEFAULT '{}',
+  actions_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_run_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS workflow_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  workflow_id INTEGER NOT NULL,
+  email_id INTEGER,
+  status TEXT NOT NULL,
+  actions_json TEXT NOT NULL DEFAULT '[]',
+  error TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
+  FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email_id INTEGER NOT NULL,
+  filename TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL DEFAULT 0,
+  r2_key TEXT,
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  virus_scan_status TEXT NOT NULL DEFAULT 'not_scanned',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_type TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id INTEGER,
+  status TEXT NOT NULL,
+  message TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  key_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'viewer',
+  last_used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ai_providers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  label TEXT NOT NULL,
+  model TEXT NOT NULL,
+  credentials_json TEXT NOT NULL DEFAULT '{}',
+  capabilities_json TEXT NOT NULL DEFAULT '[]',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_emails_received_at ON emails(received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_emails_contact_id ON emails(contact_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(email);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_created_at ON workflow_runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at DESC);
