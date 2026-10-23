@@ -14,6 +14,14 @@ This repo is a production-oriented MVP built on:
 
 No React. No Vue.
 
+## Application preview
+
+![MailFlow dashboard](landing/assets/screenshots/en/dashboard.png)
+
+![Recorded dashboard, messages, search and ticket walkthrough](landing/assets/demo-real.gif)
+
+Actual application captures already shipped with the landing page. These are existing demo snapshots, not a new recording or a claim of present-day mail delivery. The capture recipe is in `scripts/capture/`.
+
 ## Modules
 
 - Dashboard
