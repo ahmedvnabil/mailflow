@@ -1,6 +1,6 @@
 {
   "name": "mailflow-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cloudflare-native email operations platform built on Workers, Email Workers, D1, Hono, and TypeScript.",
   "license": "MIT",
   "type": "module",
