@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Miniflare } from "miniflare";
+import { createTestMiniflare } from "./test-miniflare";
 import { createRule, createWorkflow, getAnalytics, listAttachments, listContacts, listLogs, listOperationalEmails, listTickets, listWorkflowRuns } from "./db";
 import { processEmail } from "./processor";
 import { executeActions } from "./rule-engine";
@@ -25,13 +26,7 @@ function email(overrides: Partial<EmailInput> = {}): EmailInput {
 }
 
 beforeEach(async () => {
-  mf = new Miniflare({
-    modules: true,
-    script: "export default {}",
-    d1Databases: ["DB"],
-    kvNamespaces: ["CONFIG_CACHE"],
-    r2Buckets: ["ATTACHMENTS"]
-  });
+  mf = createTestMiniflare({ r2: true });
   env = (await mf.getBindings<Env>()) as Env;
 });
 

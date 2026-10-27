@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Miniflare } from "miniflare";
+import { createTestMiniflare } from "./test-miniflare";
 import app from "./index";
 import { createRule, listTickets, searchAll } from "./db";
 import { createOutboundTemplate } from "./outbound";
@@ -10,12 +11,7 @@ let mf: Miniflare;
 let env: Env;
 
 beforeEach(async () => {
-  mf = new Miniflare({
-    modules: true,
-    script: "export default {}",
-    d1Databases: ["DB"],
-    kvNamespaces: ["CONFIG_CACHE"]
-  });
+  mf = createTestMiniflare();
   env = (await mf.getBindings<Env>()) as Env;
   // A rule that opens a ticket for every inbound email.
   await createRule(env, {

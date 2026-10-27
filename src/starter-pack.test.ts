@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Miniflare } from "miniflare";
+import { createTestMiniflare } from "./test-miniflare";
 import { listInboxes, listRules } from "./db";
 import { listOutboundTemplates } from "./outbound";
 import { applyStarterPack } from "./starter-pack";
@@ -9,12 +10,7 @@ let mf: Miniflare;
 let env: Env;
 
 beforeEach(async () => {
-  mf = new Miniflare({
-    modules: true,
-    script: "export default {}",
-    d1Databases: ["DB"],
-    kvNamespaces: ["CONFIG_CACHE"]
-  });
+  mf = createTestMiniflare();
   env = (await mf.getBindings<Env>()) as Env;
 });
 
